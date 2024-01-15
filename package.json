@@ -7,7 +7,7 @@
     "test": "jest --detectOpenHandles",
     "build": "npm install",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "start": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "start": "ts-node-dev --respawn --transpile-only src/server.ts"
 
   },
   "keywords": [],
