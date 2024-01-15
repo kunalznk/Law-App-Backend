@@ -5,9 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test": "jest --detectOpenHandles",
-    "build": "tsc",
+    "build": "npm install",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "start": "node dist/server.js"
+    "start": "ts-node-dev --respawn --transpile-only src/server.ts",
+
   },
   "keywords": [],
   "author": "",
