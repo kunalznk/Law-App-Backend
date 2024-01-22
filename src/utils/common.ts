@@ -1,15 +1,16 @@
-export const buildSuccessMessage = (resData : unknown) => {
+export const buildSuccessMessage = (resData : unknown, message ?: string) => {
   return {
         data : {
         status : "SUCCESS",
         data: resData,
+        message
     },
     statusCode : 200
   }
 }
 
 export const buildFailMessage = (e : Error | any) => {
-  console.log("Error", e)
+  console.log("Error", JSON.stringify(e))
   let error;
   return {
        data : { 
@@ -17,6 +18,6 @@ export const buildFailMessage = (e : Error | any) => {
         message : e?.name,
         error
     } ,
-    statusCode : 200
+    statusCode : 500
     }
 }

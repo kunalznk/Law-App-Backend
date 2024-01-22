@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken";
 import { buildFailMessage, buildSuccessMessage } from "../utils/common";
 import { UserModel } from "../models/userModel";
 import { sendMail } from "../config/email";
+import randomstring from "randomstring";
+import { GetOtpMailTemplate } from "../utils/email/otp";
 
 function getHtml(name: string) {
     return ` <table style="max-width: 600px; width: 100%; margin: 0 auto; padding: 20px; border-collapse: collapse;font-family: Arial, sans-serif; background-color: #ffffff; color: #333333; margin: 0; padding: 0
@@ -30,13 +32,23 @@ function getHtml(name: string) {
 
 export const signUp = async (req: Request, res: Response) => {
     try {
-        const { name, email, password } = req.body;
-        console.log(req.body);
+        const { name, email, password, imgUrl, mobile } = req.body;
+
+        const expiresAt = (Date.now() + 60000 * 10) as unknown as string;
+        const otp = +randomstring.generate({
+            charset: "1234567890",
+            length: 6
+        });
+
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await UserModel.create({
             name,
             email,
-            password: hashedPassword
+            password: hashedPassword,
+            imgUrl,
+            mobile,
+            otp,
+            expiresAt
         });
 
         let token = '';
@@ -46,8 +58,12 @@ export const signUp = async (req: Request, res: Response) => {
             });
         }
         const { data, statusCode } = buildSuccessMessage(user);
-        const html = getHtml(name);
-        sendMail(email, html, "Welcome to My Law");
+
+        const html = GetOtpMailTemplate(user?.name!, user?.otp!);
+
+        sendMail(email, html, `${user?.name!}, here's your OTP to verify  your email on My Lawyer
+`);
+
         res.status(statusCode).json(data);
     } catch (error) {
         const { data, statusCode } = buildFailMessage(error);
@@ -58,7 +74,7 @@ export const signUp = async (req: Request, res: Response) => {
 export const signIn = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
-        console.log(req.body);
+
         const user = await UserModel.findOne({ email });
 
         if (!user) {
@@ -83,3 +99,83 @@ export const signIn = async (req: Request, res: Response) => {
         res.status(statusCode).json(data);
     }
 };
+
+export const verifyEmail = async (req: Request, res: Response,) => {
+
+    try {
+        const { email, otp } = req.body;
+        let user = {};
+        if (otp) {
+
+            user = await UserModel.findOne({ email });
+
+            if(!user) {
+                throw new Error("User not found");
+            }
+            const now = Date()
+            
+            if (now < user?.expiresAt!) {
+                throw new Error("OTP Expired")
+            }
+            if(user?.otp !== otp ) {
+                throw new Error("OTP Invalid")
+
+            }
+
+            const updateuser = await UserModel.findByIdAndUpdate(
+                user?._id ,
+                {
+                isVerified: true,
+                expiresAt: null,
+                otp: null
+            })
+
+            const html = getHtml(user?.name!);
+            sendMail(email, html, "Welcome to My Law");
+
+        }
+        const { data, statusCode } = buildSuccessMessage(user);
+
+        res.status(statusCode).json(data);
+    } catch (error) {
+        console.log(error);
+        const { data, statusCode } = buildFailMessage(error);
+        res.status(statusCode).json(data);
+
+    }
+}
+
+export const resendVerifyEmail = async (req: Request, res: Response,) => {
+
+    try {
+        const { email } = req.body;
+
+        const expiresAt = (Date.now() + 60000 * 10) as unknown as string;
+        const otp = +randomstring.generate({
+            charset: "1234567890",
+            length: 6
+        });
+
+        let user = await UserModel.findOne({ email });
+        await UserModel.findByIdAndUpdate(user?.id ,{
+            expiresAt,
+            otp
+        })
+
+
+        const html = GetOtpMailTemplate(user?.name!, otp);
+
+        sendMail(email, html, `${user?.name!}, here's your OTP to verify  your email on My Lawyer
+`);
+
+
+        const { data, statusCode } = buildSuccessMessage(user);
+
+        res.status(statusCode).json(data);
+    } catch (error) {
+
+        const { data, statusCode } = buildFailMessage(error);
+        res.status(statusCode).json(data);
+
+    }
+}
